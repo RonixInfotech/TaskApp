@@ -1,133 +1,195 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import logo from './assets/logo.png';
+import './App.css';
 
 function App() {
   const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem("tasks");
-    return saved ? JSON.parse(saved) : [];
+    const stored = localStorage.getItem('tasks');
+    return stored ? JSON.parse(stored) : [];
   });
-  const [form, setForm] = useState({
-    id: null,
-    name: "",
-    description: "",
-    dueDate: "",
-    status: "",
-    remarks: ""
+  const [task, setTask] = useState({
+    id: '',
+    name: '',
+    description: '',
+    dueDate: '',
+    status: 'Pending',
+    remarks: ''
   });
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterDueDate, setFilterDueDate] = useState("");
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDue, setFilterDue] = useState('');
+  const [editingId, setEditingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  useEffect(() => {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setTask(prev => ({ ...prev, [name]: value }));
   };
 
   const addOrUpdateTask = () => {
-    if (!form.name || !form.dueDate || !form.status) return;
-
-    if (form.id === null) {
-      const updated = [...tasks, { ...form, id: Date.now() }]; setTasks(updated); localStorage.setItem('tasks', JSON.stringify(updated));
+    if (editingId !== null) {
+      setTasks(prev =>
+        prev.map(t => (t.id === editingId ? { ...task, id: editingId } : t))
+      );
+      setEditingId(null);
     } else {
-      const updated = tasks.map(t => t.id === form.id ? form : t); setTasks(updated); localStorage.setItem('tasks', JSON.stringify(updated));
+      const newTask = { ...task, id: Date.now().toString() };
+      setTasks(prev => [...prev, newTask]);
     }
-
-    setForm({ id: null, name: "", description: "", dueDate: "", status: "", remarks: "" });
+    setTask({
+      id: '',
+      name: '',
+      description: '',
+      dueDate: '',
+      status: 'Pending',
+      remarks: ''
+    });
   };
 
-  const editTask = (task) => {
-    setForm(task);
+  const editTask = id => {
+    const toEdit = tasks.find(t => t.id === id);
+    setTask(toEdit);
+    setEditingId(id);
   };
 
-  const deleteTask = (id) => {
-    const updated = tasks.filter(t => t.id !== id); setTasks(updated); localStorage.setItem('tasks', JSON.stringify(updated));
+  const deleteTask = id => {
+    setTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  const filteredTasks = tasks
-    .filter(t => (!filterStatus || t.status === filterStatus))
-    .filter(t => (!filterDueDate || t.dueDate === filterDueDate))
-    .filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  const filtered = tasks.filter(t =>
+    (t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.description.toLowerCase().includes(search.toLowerCase())) &&
+    (filterStatus ? t.status === filterStatus : true) &&
+    (filterDue ? t.dueDate === filterDue : true)
+  );
 
-  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
-  const pagedTasks = filteredTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedTasks = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-  const statusBadge = (status) => {
-    let color = "gray";
-    if (status === "Pending") color = "red";
-    if (status === "In Progress") color = "green";
-    if (status === "Completed") color = "blue";
-    return <span className={`text-${color}-600 font-semibold`}>{status}</span>;
+  const statusColor = status => {
+    if (status === 'Pending') return 'text-red-600';
+    if (status === 'In Progress') return 'text-green-600';
+    if (status === 'Completed') return 'text-blue-600';
+    return '';
   };
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Task Manager</h1>
+    <div className="min-h-screen p-4 bg-gray-100">
 
-      {/* Add Task Form */}
-      <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
-        <input name="name" placeholder="Task Name" value={form.name} onChange={handleChange} className="border p-2 rounded" />
-        <input type="date" name="dueDate" value={form.dueDate} onChange={handleChange} className="border p-2 rounded" />
-        <textarea name="description" placeholder="Description" value={form.description} onChange={handleChange} className="border p-2 rounded col-span-full" />
-        <select name="status" value={form.status} onChange={handleChange} className="border p-2 rounded">
-          <option value="">Select Status</option>
-          <option value="Pending">Pending</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
+      {/* Logo */}
+      <div className="flex justify-center mb-4">
+        <img src={logo} alt="Ronix Infotech Logo" className="h-16" />
+      </div>
+
+      {/* Heading */}
+      <h1 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg shadow-md">
+        Task Management App
+      </h1>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
+        <input
+          type="text"
+          placeholder="Search by name or description"
+          className="p-2 border rounded w-full"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <input
+          type="date"
+          className="p-2 border rounded"
+          value={filterDue}
+          onChange={e => setFilterDue(e.target.value)}
+        />
+        <select
+          className="p-2 border rounded"
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+        >
+          <option value="">All Status</option>
+          <option>Pending</option>
+          <option>In Progress</option>
+          <option>Completed</option>
         </select>
-        <input name="remarks" placeholder="Remarks" value={form.remarks} onChange={handleChange} className="border p-2 rounded" />
-        <button onClick={addOrUpdateTask} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 col-span-full">
-          {form.id === null ? "Add Task" : "Update Task"}
+      </div>
+
+      {/* Task Form */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <input name="name" value={task.name} onChange={handleChange} placeholder="Task Name" className="p-2 border rounded" />
+        <input name="description" value={task.description} onChange={handleChange} placeholder="Description" className="p-2 border rounded" />
+        <input name="dueDate" type="date" value={task.dueDate} onChange={handleChange} className="p-2 border rounded" />
+        <select name="status" value={task.status} onChange={handleChange} className="p-2 border rounded">
+          <option>Pending</option>
+          <option>In Progress</option>
+          <option>Completed</option>
+        </select>
+        <input name="remarks" value={task.remarks} onChange={handleChange} placeholder="Remarks" className="p-2 border rounded md:col-span-2" />
+        <button onClick={addOrUpdateTask} className="bg-blue-600 text-white py-2 px-4 rounded md:col-span-2">
+          {editingId ? 'Update Task' : 'Add Task'}
         </button>
       </div>
 
-      {/* Filter/Search */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <input type="text" placeholder="Search Task Name" value={search} onChange={(e) => setSearch(e.target.value)} className="border p-2 rounded" />
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="border p-2 rounded">
-          <option value="">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
-        </select>
-        <input type="date" value={filterDueDate} onChange={(e) => setFilterDueDate(e.target.value)} className="border p-2 rounded" />
-      </div>
-
       {/* Tasks Table */}
-      <table className="w-full table-auto border border-collapse text-sm">
-        <thead>
-          <tr className="bg-gray-200 text-left">
-            <th className="border px-2 py-1">Name</th>
-            <th className="border px-2 py-1">Description</th>
-            <th className="border px-2 py-1">Due Date</th>
-            <th className="border px-2 py-1">Status</th>
-            <th className="border px-2 py-1">Remarks</th>
-            <th className="border px-2 py-1">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pagedTasks.map((task) => (
-            <tr key={task.id}>
-              <td className="border px-2 py-1">{task.name}</td>
-              <td className="border px-2 py-1">{task.description}</td>
-              <td className="border px-2 py-1">{task.dueDate}</td>
-              <td className="border px-2 py-1">{statusBadge(task.status)}</td>
-              <td className="border px-2 py-1">{task.remarks}</td>
-              <td className="border px-2 py-1 flex flex-col md:flex-row gap-2">
-                <button onClick={() => editTask(task)} className="text-green-600 hover:underline">Edit</button>
-                <button onClick={() => deleteTask(task.id)} className="text-red-600 hover:underline">Delete</button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full bg-white rounded shadow-md">
+          <thead>
+            <tr className="bg-gray-200 text-left">
+              <th className="p-2">Task Name</th>
+              <th className="p-2">Description</th>
+              <th className="p-2">Due Date</th>
+              <th className="p-2">Status</th>
+              <th className="p-2">Remarks</th>
+              <th className="p-2">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {paginatedTasks.map(t => (
+              <tr key={t.id} className="border-t">
+                <td className="p-2">{t.name}</td>
+                <td className="p-2">{t.description}</td>
+                <td className="p-2">{t.dueDate}</td>
+                <td className={`p-2 font-semibold ${statusColor(t.status)}`}>{t.status}</td>
+                <td className="p-2">{t.remarks}</td>
+                <td className="p-2">
+                  <button onClick={() => editTask(t.id)} className="text-yellow-600 mr-2">Edit</button>
+                  <button onClick={() => deleteTask(t.id)} className="text-red-600">Delete</button>
+                </td>
+              </tr>
+            ))}
+            {paginatedTasks.length === 0 && (
+              <tr>
+                <td className="p-2 text-center text-gray-500" colSpan="6">No tasks found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Pagination */}
-      <div className="flex justify-center items-center gap-2 mt-4">
-        <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50">Prev</button>
-        <span>Page {currentPage} of {totalPages}</span>
-        <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50">Next</button>
+      <div className="flex justify-center mt-4 space-x-2">
+        {Array.from({ length: totalPages }, (_, i) => (
+          <button
+            key={i}
+            className={`px-3 py-1 rounded ${currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            onClick={() => setCurrentPage(i + 1)}
+          >
+            {i + 1}
+          </button>
+        ))}
       </div>
+
+      {/* Footer */}
+      <footer className="text-center mt-10 text-sm text-gray-500">
+        Developed by <span className="font-semibold text-blue-600">Ronix Infotech</span>
+      </footer>
     </div>
   );
 }
