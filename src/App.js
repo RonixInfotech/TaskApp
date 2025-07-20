@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 
 function App() {
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem("tasks");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [form, setForm] = useState({
     id: null,
     name: "",
@@ -24,9 +27,9 @@ function App() {
     if (!form.name || !form.dueDate || !form.status) return;
 
     if (form.id === null) {
-      setTasks([...tasks, { ...form, id: Date.now() }]);
+      const updated = [...tasks, { ...form, id: Date.now() }]; setTasks(updated); localStorage.setItem('tasks', JSON.stringify(updated));
     } else {
-      setTasks(tasks.map(t => t.id === form.id ? form : t));
+      const updated = tasks.map(t => t.id === form.id ? form : t); setTasks(updated); localStorage.setItem('tasks', JSON.stringify(updated));
     }
 
     setForm({ id: null, name: "", description: "", dueDate: "", status: "", remarks: "" });
@@ -37,7 +40,7 @@ function App() {
   };
 
   const deleteTask = (id) => {
-    setTasks(tasks.filter(t => t.id !== id));
+    const updated = tasks.filter(t => t.id !== id); setTasks(updated); localStorage.setItem('tasks', JSON.stringify(updated));
   };
 
   const filteredTasks = tasks
